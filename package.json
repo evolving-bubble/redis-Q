@@ -1,0 +1,28 @@
+{
+  "name": "redis-q",
+  "version": "1.0.0",
+  "description": "Redis Queue for jobs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/evolving-bubble/redis-Q.git"
+  },
+  "keywords": [
+    "RedisQ",
+    "Redis",
+    "Queue",
+    "Jobs"
+  ],
+  "author": "Yogesh Yadav",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/evolving-bubble/redis-Q/issues"
+  },
+  "homepage": "https://github.com/evolving-bubble/redis-Q#readme",
+  "dependencies": {
+    "ioredis": "^4.0.0"
+  }
+}
