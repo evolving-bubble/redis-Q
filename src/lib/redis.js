@@ -2,36 +2,25 @@
 
 // 3rd Party Libraries
 const IORedis = require('ioredis');
+const Promise = require('bluebird');
 
 // Internal
 const Libs = require('../lib');
+const Config = require('../config');
 const Helpers = require('../helpers');
+const Constants = Config.constants;
 
-// Global Objects and enums
+// Global Objects,Functions and enums 
 const libUtils = new Libs.utils();
+
 const ERROR_CODES = Helpers.statusCodes;
+const PRIORITY = Constants.enums.PRIORITY;
+const FAMILY_TYPES = Constants.enums.FAMILY_TYPES;
+const DEFAULT_PRIORITY = Constants.enums.PRIORITY.P5;
+const CONNECTION_TYPES = Constants.enums.CONNECTION_TYPES;
+const REDIS_CLIENT_STATES = Constants.enums.REDIS_CLIENT_STATES;
 
-const FAMILY_TYPE = {
-    IPv4: 4,
-    IPv6: 6
-}
-
-const REDIS_CLIENT_STATES = {
-    CONNECTED: 'CONNECTED',
-    READY: 'READY',
-    ERROR: 'ERROR',
-    CLOSED: 'CLOSED',
-    RECONNECTING: 'RECONNECTING',
-    END: 'END'
-}
-
-const CONNECTION_TYPES = {
-    NORMAL: 'NORMAL',
-    CLUSTER: 'CLUSTER',
-    SENTINEL: 'SENTINEL'
-}
-
-const normalRedisConnection = (options) => {
+const singleHostRedisConnection = (options) => {
 
     if (!options || typeof options !== 'object') {
         throw libUtils.genError(
@@ -52,7 +41,7 @@ const normalRedisConnection = (options) => {
     let connectOptions = {
         host: options.host,
         port: options.port,
-        family: options.family && FAMILY_TYPE[options.family] ? FAMILY_TYPE[options.family] : 4,
+        family: options.family && FAMILY_TYPES[options.family] ? FAMILY_TYPES[options.family] : 4,
         db: Number(options.db) ? Number(options.db) : 0,
         retryStrategy: (times) => Math.min(times * 50, 5000),
         autoResendUnfulfilledCommands: false,
@@ -110,7 +99,7 @@ const sentinelRedisConnection = (options) => {
 
     let connectOptions = {
         sentinels: options.sentinels,
-        family: options.family && FAMILY_TYPE[options.family] ? FAMILY_TYPE[options.family] : 4,
+        family: options.family && FAMILY_TYPES[options.family] ? FAMILY_TYPES[options.family] : 4,
         db: Number(options.db) ? Number(options.db) : 0,
         retryStrategy: (times) => Math.min(times * 50, 2000),
         autoResendUnfulfilledCommands: false,
@@ -155,7 +144,7 @@ const clusterRedisConnection = (options) => {
         slotsRefreshTimeout: 1000,
         slotsRefreshInterval: 5000,
         redisOptions: {
-            family: options.family && FAMILY_TYPE[options.family] ? FAMILY_TYPE[options.family] : 4,
+            family: options.family && FAMILY_TYPES[options.family] ? FAMILY_TYPES[options.family] : 4,
             db: Number(options.db) ? Number(options.db) : 0,
             retryStrategy: (times) => Math.min(times * 50, 2000),
             autoResendUnfulfilledCommands: false,
@@ -181,7 +170,7 @@ const clusterRedisConnection = (options) => {
 }
 
 const connectionTypeToRedisConnectionMap = {
-    NORMAL: normalRedisConnection,
+    NORMAL: singleHostRedisConnection,
     CLUSTER: clusterRedisConnection,
     SENTINEL: sentinelRedisConnection
 }
@@ -189,7 +178,9 @@ const connectionTypeToRedisConnectionMap = {
 class Redis {
     constructor(options) {
         let self = this;
-        self.state = 'false';
+        self.listSuffix = '_redisQ';
+        self.state = REDIS_CLIENT_STATES.UNINITIALIZED;
+        self.lists = [DEFAULT_PRIORITY + self.listSuffix]
         self.connectionType = CONNECTION_TYPES[options.connectionType];
 
         if (!self.connectionType) {
@@ -233,14 +224,52 @@ class Redis {
         });
     }
 
-    isReady() {
-        let self = this;
-        if (self.state === REDIS_CLIENT_STATES.READY) {
-            return true;
+    push(options) {
+        let list = options.list;
+        let priority = options.priority;
+        let elements = options.elements;
+
+        if (!list) {
+            return Promise.reject(libUtils.genError(
+                'Provide list to push an element',
+                ERROR_CODES.PRECONDITION_FAILED.status,
+                ERROR_CODES.PRECONDITION_FAILED.code
+            ));
         }
 
-        return false;
+        if (!elements) {
+            return Promise.reject(libUtils.genError(
+                'Provide elements to push an list',
+                ERROR_CODES.PRECONDITION_FAILED.status,
+                ERROR_CODES.PRECONDITION_FAILED.code
+            ));
+        }
+
+        if (typeof elements !== 'object') {
+            elements = [elements];
+        }
+
+        return self.redisClient.rpush(list, elements);
     }
+
+    pop() {
+        let lists = this.lists;
+
+        if (!this.lists) {
+            return Promise.reject(libUtils.genError(
+                'Provide lists to pop an element',
+                ERROR_CODES.PRECONDITION_FAILED.status,
+                ERROR_CODES.PRECONDITION_FAILED.code
+            ));
+        }
+
+        if (typeof lists !== 'object') {
+            lists = [lists];
+        }
+
+        return self.redisClient.blpop(lists, 0);
+    }
+
 }
 
 module.exports = Redis;
