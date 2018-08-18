@@ -15,6 +15,7 @@ const libUtils = new Libs.utils();
 
 const ERROR_CODES = Helpers.statusCodes;
 const PRIORITY = Constants.enums.PRIORITY;
+const ALLOWED_PRIORITIES = Object.keys(PRIORITY);
 const FAMILY_TYPES = Constants.enums.FAMILY_TYPES;
 const DEFAULT_PRIORITY = Constants.enums.PRIORITY.P5;
 const CONNECTION_TYPES = Constants.enums.CONNECTION_TYPES;
@@ -180,7 +181,9 @@ class Redis {
         let self = this;
         self.listSuffix = '_redisQ';
         self.state = REDIS_CLIENT_STATES.UNINITIALIZED;
-        self.lists = [DEFAULT_PRIORITY + self.listSuffix]
+        self.lists = Object.keys(PRIORITY).forEach((priority) => {
+            return PRIORITY[priority] + self.listSuffix;
+        });
         self.connectionType = CONNECTION_TYPES[options.connectionType];
 
         if (!self.connectionType) {
@@ -225,7 +228,6 @@ class Redis {
     }
 
     push(options) {
-        let list = options.list;
         let priority = options.priority;
         let elements = options.elements;
 
@@ -245,28 +247,27 @@ class Redis {
             ));
         }
 
-        if (typeof elements !== 'object') {
-            elements = [elements];
+        if (!priority) {
+            priority = PRIORITY[DEFAULT_PRIORITY];
         }
 
-        return self.redisClient.rpush(list, elements);
-    }
-
-    pop() {
-        let lists = this.lists;
-
-        if (!this.lists) {
+        if (ALLOWED_PRIORITIES.indexOf(priority) < 0) {
             return Promise.reject(libUtils.genError(
-                'Provide lists to pop an element',
+                'Given priority is not supported (Supported from P0 to P9)',
                 ERROR_CODES.PRECONDITION_FAILED.status,
                 ERROR_CODES.PRECONDITION_FAILED.code
             ));
         }
 
-        if (typeof lists !== 'object') {
-            lists = [lists];
+        if (typeof elements !== 'object') {
+            elements = [elements];
         }
 
+        let listName = priority + this.listSuffix;
+        return self.redisClient.rpush(list, elements);
+    }
+
+    pop() {
         return self.redisClient.blpop(lists, 0);
     }
 
