@@ -13,7 +13,7 @@ const Constants = Config.constants;
 // Global Objects,Functions and enums 
 const libUtils = new Libs.utils();
 
-const ERROR_CODES = Helpers.statusCodes;
+const STATUS_CODES = Helpers.statusCodes;
 const PRIORITY = Constants.enums.PRIORITY;
 const ALLOWED_PRIORITIES = Object.keys(PRIORITY);
 const FAMILY_TYPES = Constants.enums.FAMILY_TYPES;
@@ -26,16 +26,16 @@ const singleHostRedisConnection = (options) => {
     if (!options || typeof options !== 'object') {
         throw libUtils.genError(
             'Connection options not provided or improper format',
-            ERROR_CODES.PRECONDITION_FAILED.status,
-            ERROR_CODES.PRECONDITION_FAILED.code
+            STATUS_CODES.PRECONDITION_FAILED.status,
+            STATUS_CODES.PRECONDITION_FAILED.code
         );
     }
 
     if (!options.host || !options.port) {
         throw libUtils.genError(
             'Host and port are mandatory for redis connection',
-            ERROR_CODES.PRECONDITION_FAILED.status,
-            ERROR_CODES.PRECONDITION_FAILED.code
+            STATUS_CODES.PRECONDITION_FAILED.status,
+            STATUS_CODES.PRECONDITION_FAILED.code
         );
     }
 
@@ -71,16 +71,16 @@ const sentinelRedisConnection = (options) => {
     if (!options || typeof options !== 'object') {
         throw libUtils.genError(
             'Connection options not provided or improper format',
-            ERROR_CODES.PRECONDITION_FAILED.status,
-            ERROR_CODES.PRECONDITION_FAILED.code
+            STATUS_CODES.PRECONDITION_FAILED.status,
+            STATUS_CODES.PRECONDITION_FAILED.code
         );
     }
 
     if (!options.sentinels || !options.sentinels.length) {
         throw libUtils.genError(
             'Sentinel list mandatory for redis connection',
-            ERROR_CODES.PRECONDITION_FAILED.status,
-            ERROR_CODES.PRECONDITION_FAILED.code
+            STATUS_CODES.PRECONDITION_FAILED.status,
+            STATUS_CODES.PRECONDITION_FAILED.code
         );
     }
 
@@ -93,8 +93,8 @@ const sentinelRedisConnection = (options) => {
     if (genError) {
         throw libUtils.genError(
             'Sentinel element should comprise of host and port',
-            ERROR_CODES.PRECONDITION_FAILED.status,
-            ERROR_CODES.PRECONDITION_FAILED.code
+            STATUS_CODES.PRECONDITION_FAILED.status,
+            STATUS_CODES.PRECONDITION_FAILED.code
         );
     }
 
@@ -128,8 +128,8 @@ const clusterRedisConnection = (options) => {
     if (!options || typeof options !== 'object') {
         throw libUtils.genError(
             'Connection options not provided or improper format',
-            ERROR_CODES.PRECONDITION_FAILED.status,
-            ERROR_CODES.PRECONDITION_FAILED.code
+            STATUS_CODES.PRECONDITION_FAILED.status,
+            STATUS_CODES.PRECONDITION_FAILED.code
         );
     }
 
@@ -189,39 +189,39 @@ class Redis {
         if (!self.connectionType) {
             throw libUtils.genError(
                 'Connection type not provided or supported, available are (NORMAL, SENTINEL, CLUSTER)',
-                ERROR_CODES.PRECONDITION_FAILED.status,
-                ERROR_CODES.PRECONDITION_FAILED.code
+                STATUS_CODES.PRECONDITION_FAILED.status,
+                STATUS_CODES.PRECONDITION_FAILED.code
             );
         }
 
-        self.redisClient = connectionTypeToRedisConnectionMap[self.connectionType](options.connectOptions);
+        self.client = connectionTypeToRedisConnectionMap[self.connectionType](options.connectOptions);
 
-        self.redisClient.on('connect', () => {
+        self.client.on('connect', () => {
             self.state = REDIS_CLIENT_STATES.CONNECTED;
             console.info('Redis entered state: ', self.state);
         });
 
-        self.redisClient.on('ready', () => {
+        self.client.on('ready', () => {
             self.state = REDIS_CLIENT_STATES.READY;
             console.info('Redis entered state: ', self.state);
         });
 
-        self.redisClient.on('error', () => {
+        self.client.on('error', () => {
             self.state = REDIS_CLIENT_STATES.ERROR;
             console.info('Redis entered state: ', self.state);
         });
 
-        self.redisClient.on('close', () => {
+        self.client.on('close', () => {
             self.state = REDIS_CLIENT_STATES.CLOSED;
             console.info('Redis entered state: ', self.state);
         });
 
-        self.redisClient.on('reconnecting', () => {
+        self.client.on('reconnecting', () => {
             self.state = REDIS_CLIENT_STATES.RECONNECTING;
             console.info('Redis entered state: ', self.state);
         });
 
-        self.redisClient.on('end', () => {
+        self.client.on('end', () => {
             self.state = REDIS_CLIENT_STATES.END;
             console.info('Redis entered state: ', self.state);
         });
@@ -234,16 +234,16 @@ class Redis {
         if (!list) {
             return Promise.reject(libUtils.genError(
                 'Provide list to push an element',
-                ERROR_CODES.PRECONDITION_FAILED.status,
-                ERROR_CODES.PRECONDITION_FAILED.code
+                STATUS_CODES.PRECONDITION_FAILED.status,
+                STATUS_CODES.PRECONDITION_FAILED.code
             ));
         }
 
         if (!elements) {
             return Promise.reject(libUtils.genError(
-                'Provide elements to push an list',
-                ERROR_CODES.PRECONDITION_FAILED.status,
-                ERROR_CODES.PRECONDITION_FAILED.code
+                'Provide elements to push in form of list',
+                STATUS_CODES.PRECONDITION_FAILED.status,
+                STATUS_CODES.PRECONDITION_FAILED.code
             ));
         }
 
@@ -254,8 +254,8 @@ class Redis {
         if (ALLOWED_PRIORITIES.indexOf(priority) < 0) {
             return Promise.reject(libUtils.genError(
                 'Given priority is not supported (Supported from P0 to P9)',
-                ERROR_CODES.PRECONDITION_FAILED.status,
-                ERROR_CODES.PRECONDITION_FAILED.code
+                STATUS_CODES.PRECONDITION_FAILED.status,
+                STATUS_CODES.PRECONDITION_FAILED.code
             ));
         }
 
@@ -264,11 +264,11 @@ class Redis {
         }
 
         let listName = priority + this.listSuffix;
-        return self.redisClient.rpush(list, elements);
+        return self.client.rpush(listName, elements);
     }
 
     pop() {
-        return self.redisClient.blpop(lists, 0);
+        return self.client.blpop(lists, 0);
     }
 
 }

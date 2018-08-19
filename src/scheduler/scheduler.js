@@ -15,6 +15,7 @@ const ERROR_CODES = Helpers.statusCodes;
 class JobScheduler {
     constructor(options) {
 
+        let self = this;
         if (!options || typeof options !== 'object') {
             throw libUtils.genError(
                 'Job scheduler options not provided or improper format',
@@ -39,16 +40,9 @@ class JobScheduler {
             );
         }
 
-        this.jobName = options.jobName;
-        this.callback = options.callback;
-        this.schedulerTime = options.schedulerTime;
-    }
-
-    scheduleJob() {
-        let self = this;
-        console.info('Job is being scheduled for ', self.schedulerTime);
-        Schedule.scheduleJob(self.schedulerTime, () => {
-            self.callback();
+        console.debug('Job: ', options.jobName, 'is being scheduled for ', options.schedulerTime);
+        Schedule.scheduleJob(options.schedulerTime, () => {
+            options.callback();
         });
     }
 }

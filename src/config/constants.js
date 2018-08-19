@@ -1,5 +1,7 @@
 'use strict';
 
+const Sequelize = require('sequelize');
+
 module.exports = {
     enums: {
         CONNECTION_TYPES: {
@@ -36,6 +38,24 @@ module.exports = {
             P9: 'P9'
         },
 
-        DEFAULT_PRIORITY: 'P5'
+        DEFAULT_PRIORITY: 'P5',
+
+        DB_FIELDS_TYPE_TO_SEQUELIZE_FIELDS_TYPE: {
+            TEXT: Sequelize.TEXT,
+            FLOAT: Sequelize.FLOAT,
+            DOUBLE: Sequelize.DOUBLE,
+            DATETIME: Sequelize.DATE,
+            BIGINT: Sequelize.BIGINT,
+            DATE: Sequelize.DATEONLY,
+            VARCHAR: Sequelize.STRING,
+            INTEGER: Sequelize.INTEGER,
+            DECIMAL: Sequelize.DECIMAL,
+            TINYTEXT: Sequelize.TEXT('tiny'),
+            UNSIGNED_INTEGER: Sequelize.INTEGER.UNSIGNED,
+        },
+
+        OPERATORS_TO_SEQUELIZE_OPERATORS: {
+
+        }
     }
 }
