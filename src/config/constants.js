@@ -55,7 +55,22 @@ module.exports = {
         },
 
         OPERATORS_TO_SEQUELIZE_OPERATORS: {
-
+            eq: '$eq',
+            or: '$or',
+            and: '$and',
+            gt: '$gt',
+            gte: '$gte',
+            lt: '$lt',
+            lte: '$lte',
+            ne: '$ne',
+            in: '$in',
+            notIn: '$notIn',
+            between: '$between',
+            notBetween: '$notBetween',
+            like: '$like',
+            notLike: '$notLike',
+            iLike: '$iLike',
+            notILike: '$notILike'
         }
     }
 }

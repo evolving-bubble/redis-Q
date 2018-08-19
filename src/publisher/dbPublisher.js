@@ -104,32 +104,22 @@ class DBPublisher extends Publisher {
         self.scheduler = new Scheduler(schedulerOptions);
 
         let searchOptions = {
-            where: {}
-        };
-        // searchOptionsFormat should be like
-        // where should be a list of and and or, so that all combinations can be handled
-        // [
-        //     {
-        //         and: [{
-        //             key: column,
-        //             operator: 'eq',
-        //             value: value
-        //         }],
-        //         or: [{
-        //             key: column,
-        //             operator: 'between',
-        //             value: [value1, value2]
-        //         }]
-        //     }
-        // ];
-        options.db.searchOptions.forEach((element) => {
-            if (element.and) {
-                element.and.forEach((searchField) => {
-                    searchField.forEach((field) => {
-
-                    })
-                })
+            where: {
+                [OPERATORS_MAP.and]: {}
             }
+        };
+        // searchOptions format should be like
+        // where should be a list of and and or, so that all combinations can be handled
+        // [{
+        //     key: column,
+        //     operator: 'eq',
+        //     value: value
+        // }];
+        options.db.searchOptions.forEach((element) => {
+            if (!searchOptions.where[OPERATORS_MAP.and][element.key]) {
+                searchOptions.where[OPERATORS_MAP.and][element.key] = {};
+            }
+            searchOptions.where[OPERATORS_MAP.and][element.key][OPERATORS_TO_SEQUELIZE_OPERATORS[element.operator]] = element.value;
         });
         self.searchOptions = searchOptions;
         super(options);
@@ -138,8 +128,19 @@ class DBPublisher extends Publisher {
     exec() {
         let self = this;
 
-        self.table.findAll({
+        self.table.findAll(self.searchOptions)
+            .then((result) => {
+                if (!result) {
+                    console.info('No records found for given scheduled query');
+                    return Promise.resolve();
+                }
 
-        })
+                console.log('Pushing result into redis', result);
+                self.push(result);
+                return Promise.resolve();
+            })
+            .catch((error) => {
+                console.error(error);
+            });
     }
 }
