@@ -5,13 +5,13 @@ const IORedis = require('ioredis');
 const Promise = require('bluebird');
 
 // Internal
-const Libs = require('../lib');
 const Config = require('../config');
+const Utils = require('../lib/utils');
 const Helpers = require('../helpers');
 const Constants = Config.constants;
 
 // Global Objects,Functions and enums 
-const libUtils = new Libs.utils();
+const libUtils = new Utils();
 
 const STATUS_CODES = Helpers.statusCodes;
 const PRIORITY = Constants.enums.PRIORITY;
@@ -22,7 +22,6 @@ const CONNECTION_TYPES = Constants.enums.CONNECTION_TYPES;
 const REDIS_CLIENT_STATES = Constants.enums.REDIS_CLIENT_STATES;
 
 const singleHostRedisConnection = (options) => {
-
     if (!options || typeof options !== 'object') {
         throw libUtils.genError(
             'Connection options not provided or improper format',
@@ -52,10 +51,13 @@ const singleHostRedisConnection = (options) => {
         autoResubscribe: true,
         reconnectOnError: (error) => {
             let targetErrors = ['READONLY'];
-            if (targetErrors.indexOf(err.message.slice(0, targetError.length)) > -1) {
-                return true;
-            }
-            return false;
+            let response = false;
+            targetErrors.forEach((targetError) => {
+                if (targetError.indexOf(error.message.slice(0, targetError.length)) > -1) {
+                    response = true;
+                }
+            });
+            return response;
         }
     }
 
@@ -228,18 +230,19 @@ class Redis {
     }
 
     push(options) {
+        let self = this;
         let priority = options.priority;
         let elements = options.elements;
 
-        if (!list) {
+        if (!elements) {
             return Promise.reject(libUtils.genError(
-                'Provide list to push an element',
+                'Provide list to push elements in redis',
                 STATUS_CODES.PRECONDITION_FAILED.status,
                 STATUS_CODES.PRECONDITION_FAILED.code
             ));
         }
 
-        if (!elements) {
+        if (typeof elements !== 'object' || !elements.length) {
             return Promise.reject(libUtils.genError(
                 'Provide elements to push in form of list',
                 STATUS_CODES.PRECONDITION_FAILED.status,

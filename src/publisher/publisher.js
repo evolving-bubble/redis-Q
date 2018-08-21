@@ -16,11 +16,11 @@ class Publisher {
     constructor(options) {
         let self = this;
 
-        if (
-            (!options.redis && !options.redis.host && !options.redis.port && options.redis.connectionType !== CONNECTION_TYPES.NORMAL) ||
-            (!options.redis && !options.redis.sentinels && options.redis.connectionType !== CONNECTION_TYPES.SENTINEL) ||
-            (!options.redis && !options.redis.nodes && options.redis.connectionType !== CONNECTION_TYPES.CLUSTER)
-        ) {
+        if (!(
+            (options.redis && options.redis.host && options.redis.port && options.redis.connectionType === CONNECTION_TYPES.NORMAL) ||
+            (options.redis && options.redis.sentinels && options.redis.connectionType === CONNECTION_TYPES.SENTINEL) ||
+            (options.redis && options.redis.nodes && options.redis.connectionType === CONNECTION_TYPES.CLUSTER)
+        )) {
             throw libUtils.genError(
                 'Please provide proper options for redis connection',
                 STATUS_CODES.PRECONDITION_FAILED.status,
@@ -33,23 +33,26 @@ class Publisher {
         // sentinels if sentinel, 
         // host,port if single redis
         let redisPublisherOptions = {
-            host: options.redis.host,
-            port: options.redis.port,
-            sentinels: options.redis.sentinels,
             connectionType: options.redis.connectionType,
-            nodes: options.redis.nodes
+            connectOptions: {
+                host: options.redis.host,
+                port: options.redis.port,
+                nodes: options.redis.nodes,
+                sentinels: options.redis.sentinels
+            }
         };
 
         self.redis = new Libs.redis(redisPublisherOptions);
-
     }
 
     push(elements, priority) {
-        console.debug('Publisher pushing message: ', elements, ' with priority: ', priority);
-        self.redis.client.push({
+        let self = this;
+        self.redis.push({
             elements,
             priority
         });
     }
 
 }
+
+module.exports = Publisher;

@@ -40,7 +40,7 @@ class JobScheduler {
             );
         }
 
-        console.debug('Job: ', options.jobName, 'is being scheduled for ', options.schedulerTime);
+        console.debug('Job:', options.jobName, 'is being scheduled for', options.schedulerTime);
         Schedule.scheduleJob(options.schedulerTime, () => {
             options.callback();
         });
