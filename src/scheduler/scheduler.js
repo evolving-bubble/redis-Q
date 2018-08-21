@@ -14,7 +14,6 @@ const ERROR_CODES = Helpers.statusCodes;
 
 class JobScheduler {
     constructor(options) {
-
         let self = this;
         if (!options || typeof options !== 'object') {
             throw libUtils.genError(
