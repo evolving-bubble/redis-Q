@@ -266,12 +266,15 @@ class Redis {
             elements = [elements];
         }
 
+        // Stringify the values
+        elements = elements.map((element) => JSON.stringify(element));
+
         let listName = priority + this.listSuffix;
         return self.client.rpush(listName, elements);
     }
 
     pop() {
-        return self.client.blpop(lists, 0);
+        return JSON.parse(self.client.blpop(lists, 0));
     }
 
 }

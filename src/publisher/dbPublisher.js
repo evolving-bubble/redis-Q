@@ -111,7 +111,8 @@ class DBPublisher extends Publisher {
         let searchOptions = {
             where: {
                 [OPERATORS_MAP.and]: {}
-            }
+            },
+            raw: true
         };
         // searchOptions format should be like
         // where should be a list of and and or, so that all combinations can be handled
@@ -134,12 +135,12 @@ class DBPublisher extends Publisher {
 
         self.table.findAll(self.searchOptions)
             .then((result) => {
-                if (!result) {
+                if (!result || !result.length) {
                     console.info('No records found for given scheduled query');
                     return Promise.resolve();
                 }
 
-                console.log('Pushing result into redis', result);
+                console.log('Pushing result into redis');
                 self.push(result);
                 return Promise.resolve();
             })
@@ -167,6 +168,10 @@ const dBPublisher = new DBPublisher({
             },
             {
                 key: 'order_item_id',
+                type: 'varchar'
+            },
+            {
+                key: 'customer_id',
                 type: 'varchar'
             },
         ],
