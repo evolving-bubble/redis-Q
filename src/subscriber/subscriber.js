@@ -12,8 +12,9 @@ const STATUS_CODES = Helpers.statusCodes;
 const CONNECTION_TYPES = Constants.enums.CONNECTION_TYPES;
 
 
-class Publisher {
-    constructor(options) {
+class Subscriber {
+
+    constructor() {
         let self = this;
 
         if (!(
@@ -45,14 +46,8 @@ class Publisher {
         self.redis = new Libs.redis(redisPublisherOptions);
     }
 
-    push(elements, priority) {
+    pop() {
         let self = this;
-        return self.redis.push({
-            elements,
-            priority
-        });
+        return self.redis.pop();
     }
-
 }
-
-module.exports = Publisher;

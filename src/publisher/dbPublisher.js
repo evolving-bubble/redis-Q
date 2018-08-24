@@ -114,6 +114,7 @@ class DBPublisher extends Publisher {
             },
             raw: true
         };
+
         // searchOptions format should be like
         // where should be a list of and and or, so that all combinations can be handled
         // [{
@@ -150,7 +151,7 @@ class DBPublisher extends Publisher {
     }
 }
 
-// Test
+// // Test
 // const dBPublisher = new DBPublisher({
 //     jobName: 'test-DBPublisher',
 //     schedulerTime: '*/10 * * * * *', // Every 10 secs
