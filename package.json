@@ -24,10 +24,12 @@
   "homepage": "https://github.com/evolving-bubble/redis-Q#readme",
   "dependencies": {
     "bluebird": "^3.5.1",
+    "chalk": "^2.4.1",
     "commander": "^2.17.1",
     "ioredis": "^4.0.0",
     "mysql2": "^1.6.1",
     "node-schedule": "^1.3.0",
-    "sequelize": "^4.38.0"
+    "sequelize": "^4.38.0",
+    "shelljs": "^0.8.2"
   }
 }
