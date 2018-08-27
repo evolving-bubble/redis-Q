@@ -17,9 +17,7 @@ class Start extends Base {
     }
 
     exec(name, options) {
-        console.log(name, options);
-        console.log(options['redisHost']);
-        console.log(options['redisPort']);
+        console.log(name, options, options['redisHost'], options['redisPort']);
     }
 }
 
