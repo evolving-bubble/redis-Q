@@ -180,9 +180,10 @@ const connectionTypeToRedisConnectionMap = {
 class Redis {
     constructor(options) {
         let self = this;
+        self.listPrefix = 'redisQ_';
         self.listSuffix = '_redisQ';
         self.state = REDIS_CLIENT_STATES.UNINITIALIZED;
-        self.lists = [DEFAULT_LIST + self.listSuffix];
+        self.lists = [self.listPrefix + DEFAULT_LIST + self.listSuffix];
 
         self.connectionType = CONNECTION_TYPES[options.connectionType];
 
@@ -252,43 +253,79 @@ class Redis {
         }
 
         let jobId = libUtils.generateUniqueId();
-        let jobElementCount = 1;
-        let totalJobElements = elements.length;
+        let currentIndex = 1;
+        let totalElements = elements.length;
 
         // Add JobId, Stringify the values
         elements = elements.map((element) => {
             element.jobId = jobId;
-            element.jobElementCount = jobElementCount;
-            element.jobElementTotalCount = totalJobElements;
+            element.currentIndex = currentIndex;
+            element.totalElements = totalElements;
             element.createdAt = new Date();
-            jobElementCount += 1;
+            currentIndex += 1;
             return JSON.stringify(element)
         });
 
-        let listName = jobId + this.listSuffix;
+        let listName = self.listPrefix + jobId + this.listSuffix;
         self.lists.push(listName);
         return self.client.rpush(listName, elements);
     }
 
     pop() {
-        return JSON.parse(self.client.blpop(lists, 0));
+        return JSON.parse(self.client.blpop(self.lists, 0));
     }
 
-    peek(jobId) {
+    peekJob(jobId) {
         let self = this;
+        let job = self.listPrefix + jobId + self.listSuffix;
         return new Promise((resolve, reject) => {
-            return self.client.range(jobId + self.listSuffix)
-                .then(() => {
+            return self.client.range(job)
+                .then((result) => {
 
+                    let response = {
+                        current: result.currentIndex,
+                        totalElements: result.totalElements,
+                        percentageCompleted: Number(((result.currentIndex / result.totalElements) * 100).toFixed(2)),
+                        percentagePending: 100 - Number(((result.currentIndex / result.totalElements) * 100).toFixed(2))
+                    };
+                    return Promise.resolve(response);
                 })
-                .then(() => {
-
+                .then((result) => {
+                    return resolve(result);
                 })
                 .catch((error) => {
-
+                    return reject(error);
                 });
         });
+    }
 
+    cancelJob(jobId) {
+        let self = this;
+        let response;
+        let job = self.listPrefix + jobId + self.listSuffix;
+        return new Promise((resolve, reject) => {
+            return self.client.range(job)
+                .then((result) => {
+                    response = {
+                        current: result.currentIndex,
+                        totalElements: result.totalElements,
+                        percentageCompleted: Number(((result.currentIndex / result.totalElements) * 100).toFixed(2)),
+                        percentagePending: 100 - Number(((result.currentIndex / result.totalElements) * 100).toFixed(2))
+                    };
+                    return Promise.resolve();
+                })
+                .then(() => {
+                    return self.client.del(job);
+                })
+                .then(() => {
+                    response.status = 'CANCELLED';
+                    response.message = 'Successfully cancelled job';
+                    return resolve(response);
+                })
+                .catch((error) => {
+                    return reject(error);
+                });
+        });
     }
 }
 
