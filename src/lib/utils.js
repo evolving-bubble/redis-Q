@@ -1,5 +1,6 @@
 'use strict';
 
+const Uuid = require('uuid');
 const Helpers = require('../helpers');
 
 const ERROR_CODES = Helpers.statusCodes;
@@ -7,6 +8,10 @@ const ERROR_CODES = Helpers.statusCodes;
 class Utils {
     constructor() {
 
+    }
+
+    generateUniqueId() {
+        return Uuid.v4();
     }
 
     genError(message, status, code) {

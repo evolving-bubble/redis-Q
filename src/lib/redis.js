@@ -14,12 +14,11 @@ const Constants = Config.constants;
 const libUtils = new Utils();
 
 const STATUS_CODES = Helpers.statusCodes;
-const PRIORITY = Constants.enums.PRIORITY;
-const ALLOWED_PRIORITIES = Object.keys(PRIORITY);
 const FAMILY_TYPES = Constants.enums.FAMILY_TYPES;
-const DEFAULT_PRIORITY = Constants.enums.PRIORITY.P5;
 const CONNECTION_TYPES = Constants.enums.CONNECTION_TYPES;
 const REDIS_CLIENT_STATES = Constants.enums.REDIS_CLIENT_STATES;
+
+const DEFAULT_LIST = 'redisQ';
 
 const singleHostRedisConnection = (options) => {
     if (!options || typeof options !== 'object') {
@@ -183,9 +182,8 @@ class Redis {
         let self = this;
         self.listSuffix = '_redisQ';
         self.state = REDIS_CLIENT_STATES.UNINITIALIZED;
-        self.lists = Object.keys(PRIORITY).forEach((priority) => {
-            return PRIORITY[priority] + self.listSuffix;
-        });
+        self.lists = [DEFAULT_LIST + self.listSuffix];
+
         self.connectionType = CONNECTION_TYPES[options.connectionType];
 
         if (!self.connectionType) {
@@ -231,7 +229,6 @@ class Redis {
 
     push(options) {
         let self = this;
-        let priority = options.priority;
         let elements = options.elements;
 
         if (!elements) {
@@ -250,26 +247,26 @@ class Redis {
             ));
         }
 
-        if (!priority) {
-            priority = PRIORITY[DEFAULT_PRIORITY];
-        }
-
-        if (ALLOWED_PRIORITIES.indexOf(priority) < 0) {
-            return Promise.reject(libUtils.genError(
-                'Given priority is not supported (Supported from P0 to P9)',
-                STATUS_CODES.PRECONDITION_FAILED.status,
-                STATUS_CODES.PRECONDITION_FAILED.code
-            ));
-        }
-
         if (typeof elements !== 'object') {
             elements = [elements];
         }
 
-        // Stringify the values
-        elements = elements.map((element) => JSON.stringify(element));
+        let jobId = libUtils.generateUniqueId();
+        let jobElementCount = 1;
+        let totalJobElements = elements.length;
 
-        let listName = priority + this.listSuffix;
+        // Add JobId, Stringify the values
+        elements = elements.map((element) => {
+            element.jobId = jobId;
+            element.jobElementCount = jobElementCount;
+            element.jobElementTotalCount = totalJobElements;
+            element.createdAt = new Date();
+            jobElementCount += 1;
+            return JSON.stringify(element)
+        });
+
+        let listName = jobId + this.listSuffix;
+        self.lists.push(listName);
         return self.client.rpush(listName, elements);
     }
 
@@ -277,6 +274,22 @@ class Redis {
         return JSON.parse(self.client.blpop(lists, 0));
     }
 
+    peek(jobId) {
+        let self = this;
+        return new Promise((resolve, reject) => {
+            return self.client.range(jobId + self.listSuffix)
+                .then(() => {
+
+                })
+                .then(() => {
+
+                })
+                .catch((error) => {
+
+                });
+        });
+
+    }
 }
 
 module.exports = Redis;
