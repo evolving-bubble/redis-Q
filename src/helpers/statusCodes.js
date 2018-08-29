@@ -3,6 +3,13 @@
 module.exports = {
 
     // Success Codes
+
+    OK: {
+        message: 'Successfully processed',
+        status: 200,
+        code: 'OK'
+    },
+
     SUCCESSFULLY_LISTED: {
         message: 'Successfully listed job data',
         status: 200,

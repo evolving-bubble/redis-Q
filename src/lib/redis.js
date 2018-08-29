@@ -216,8 +216,8 @@ class Redis {
                     }
 
                     result.forEach((key) => {
-                        key = key.split('_');
-                        if (key[0] === LIST_PREFIX && key[2] === LIST_SUFFIXES.INITIATED) {
+                        let keySplit = key.split('_');
+                        if (keySplit[0] === LIST_PREFIX.split('_')[0] && keySplit[2] === LIST_SUFFIXES.INITIATED.split('_')[1]) {
                             self.lists.push(key);
                         }
                     });
@@ -266,7 +266,6 @@ class Redis {
         }
 
         let elements = options.elements;
-
         if (!elements) {
             return Promise.reject(libUtils.genError(
                 'Provide list to push elements in redis',
@@ -275,7 +274,7 @@ class Redis {
             ));
         }
 
-        if (typeof elements !== 'object' || !elements.length) {
+        if (typeof elements !== 'object') {
             return Promise.reject(libUtils.genError(
                 'Provide elements to push in form of list',
                 STATUS_CODES.PRECONDITION_FAILED.status,
@@ -283,7 +282,7 @@ class Redis {
             ));
         }
 
-        if (typeof elements !== 'object') {
+        if (!elements.length) {
             elements = [elements];
         }
 
@@ -303,7 +302,28 @@ class Redis {
 
         let listName = LIST_PREFIX + jobId + LIST_SUFFIXES.INITIATED;
         self.lists.push(listName);
-        return self.client.rpush(listName, elements);
+        let response = {};
+
+        return new Promise((resolve, reject) => {
+            return self.client.rpush(listName, elements)
+                .then((result) => {
+                    response = {
+                        jobId,
+                        rowsPushed: result,
+                        status: STATUS_CODES.OK.status,
+                        message: STATUS_CODES.OK.message,
+                        code: STATUS_CODES.OK.code
+                    };
+                    return Promise.resolve();
+                })
+                .then(() => {
+                    console.log(response);
+                    return resolve(response);
+                })
+                .catch((error) => {
+                    return reject(error);
+                });
+        });
     }
 
     pop() {
@@ -387,10 +407,10 @@ class Redis {
                     response = {
                         jobId,
                         processed: {
-                            current: result.currentIndex,
+                            current: result.currentIndex - 1,
                             totalElements: result.totalElements,
-                            percentageCompleted: Number(((result.currentIndex / result.totalElements) * 100).toFixed(2)),
-                            percentagePending: Number((100 - (result.currentIndex / result.totalElements * 100)).toFixed(2))
+                            percentageCompleted: Number((((result.currentIndex - 1) / result.totalElements) * 100).toFixed(2)),
+                            percentagePending: Number((100 - ((result.currentIndex - 1) / result.totalElements * 100)).toFixed(2))
                         },
                         status: STATUS_CODES.SUCCESSFULLY_LISTED.status,
                         message: STATUS_CODES.SUCCESSFULLY_LISTED.message,
@@ -399,6 +419,7 @@ class Redis {
                     return Promise.resolve();
                 })
                 .then(() => {
+                    console.log(response);
                     return resolve(response);
                 })
                 .catch((error) => {
@@ -436,9 +457,9 @@ class Redis {
                                 percentageCompleted: 0,
                                 percentagePending: 100
                             },
-                            status: STATUS_CODES.NO_JOB.status,
-                            message: STATUS_CODES.NO_JOB.message,
-                            code: STATUS_CODES.NO_JOB.code
+                            status: STATUS_CODES.SUCCESSFULLY_CANCELLED.status,
+                            message: STATUS_CODES.SUCCESSFULLY_CANCELLED.message,
+                            code: STATUS_CODES.SUCCESSFULLY_CANCELLED.code
                         };
                         return Promise.resolve();
                     }
@@ -460,6 +481,7 @@ class Redis {
                     return Promise.resolve();
                 })
                 .then(() => {
+                    console.log(response);
                     return resolve(response);
                 })
                 .catch((error) => {
@@ -480,7 +502,11 @@ module.exports = Redis;
 // });
 // setTimeout(() => {
 //     console.log(RedisC.isReady());
-//     console.log(RedisC.peekJob('5bad21b9-42c4-473b-b901-92e6cc4bfd92'));
-//     console.log(RedisC.cancelJob('0f990f96-42d1-4e29-8355-4f42a60a3981'));
-//     console.log(RedisC.pop());
-// }, 2 * 1000);
+//     RedisC.peekJob('197dc3f0-3f44-4bc4-8d11-ecf96842b455');
+//     RedisC.cancelJob('197dc3f0-3f44-4bc4-8d11-ecf96842b455');
+
+//     RedisC.push({
+//         elements: { 1: 1 }
+//     });
+
+// }, 3 * 1000);
