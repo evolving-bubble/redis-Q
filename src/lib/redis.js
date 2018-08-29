@@ -19,6 +19,11 @@ const CONNECTION_TYPES = Constants.enums.CONNECTION_TYPES;
 const REDIS_CLIENT_STATES = Constants.enums.REDIS_CLIENT_STATES;
 
 const DEFAULT_LIST = 'redisQ';
+const LIST_PREFIX = 'redisQ_';
+const LIST_SUFFIXES = {
+    INITIATED: '_initiated',
+    PROCESSED: '_processed'
+}
 
 const singleHostRedisConnection = (options) => {
     if (!options || typeof options !== 'object') {
@@ -180,10 +185,8 @@ const connectionTypeToRedisConnectionMap = {
 class Redis {
     constructor(options) {
         let self = this;
-        self.listPrefix = 'redisQ_';
         self.listSuffix = '_redisQ';
         self.state = REDIS_CLIENT_STATES.UNINITIALIZED;
-        self.lists = [self.listPrefix + DEFAULT_LIST + self.listSuffix];
 
         self.connectionType = CONNECTION_TYPES[options.connectionType];
 
@@ -203,8 +206,31 @@ class Redis {
         });
 
         self.client.on('ready', () => {
-            self.state = REDIS_CLIENT_STATES.READY;
-            console.info('Redis entered state: ', self.state);
+
+            self.lists = [LIST_PREFIX + DEFAULT_LIST + self.listSuffix];
+
+            self.client.keys('*')
+                .then((result) => {
+                    if (!result || !result.length) {
+                        return Promise.resolve();
+                    }
+
+                    result.forEach((key) => {
+                        key = key.split('_');
+                        if (key[0] === LIST_PREFIX && key[2] === LIST_SUFFIXES.INITIATED) {
+                            self.lists.push(key);
+                        }
+                    });
+
+                    return Promise.resolve();
+                })
+                .then(() => {
+                    self.state = REDIS_CLIENT_STATES.READY;
+                    console.info('Redis entered state: ', self.state);
+                })
+                .catch((error) => {
+                    return Promise.reject(error);
+                });
         });
 
         self.client.on('error', () => {
@@ -230,6 +256,15 @@ class Redis {
 
     push(options) {
         let self = this;
+
+        if (self.state !== REDIS_CLIENT_STATES.READY) {
+            return Promise.reject(libUtils.genError(
+                'Redis client is not ready to process',
+                STATUS_CODES.UNABLE_TO_PROCESS.status,
+                STATUS_CODES.UNABLE_TO_PROCESS.code
+            ));
+        }
+
         let elements = options.elements;
 
         if (!elements) {
@@ -266,32 +301,105 @@ class Redis {
             return JSON.stringify(element)
         });
 
-        let listName = self.listPrefix + jobId + this.listSuffix;
+        let listName = LIST_PREFIX + jobId + LIST_SUFFIXES.INITIATED;
         self.lists.push(listName);
         return self.client.rpush(listName, elements);
     }
 
     pop() {
-        return JSON.parse(self.client.blpop(self.lists, 0));
+        let self = this;
+
+        if (self.state !== REDIS_CLIENT_STATES.READY) {
+            return Promise.reject(libUtils.genError(
+                'Redis client is not ready to process',
+                STATUS_CODES.UNABLE_TO_PROCESS.status,
+                STATUS_CODES.UNABLE_TO_PROCESS.code
+            ));
+        }
+
+        let result;
+        return new Promise((resolve, reject) => {
+            return self.client.blpop(self.lists, 0)
+                .then((element) => {
+
+                    if (!element && !element.length) {
+                        return Promise.resolve();
+                    }
+
+                    result = JSON.parse(element[1]);
+                    let listName = LIST_PREFIX + result.jobId + LIST_SUFFIXES.PROCESSED;
+                    return self.client.rpush(listName, [element]);
+                })
+                .then(() => {
+                    return resolve(result)
+                })
+                .catch((error) => {
+                    return reject(error);
+                })
+        });
+    }
+
+    isReady() {
+        return this.state === REDIS_CLIENT_STATES.READY;
     }
 
     peekJob(jobId) {
         let self = this;
-        let job = self.listPrefix + jobId + self.listSuffix;
-        return new Promise((resolve, reject) => {
-            return self.client.range(job)
-                .then((result) => {
 
-                    let response = {
-                        current: result.currentIndex,
-                        totalElements: result.totalElements,
-                        percentageCompleted: Number(((result.currentIndex / result.totalElements) * 100).toFixed(2)),
-                        percentagePending: 100 - Number(((result.currentIndex / result.totalElements) * 100).toFixed(2))
-                    };
-                    return Promise.resolve(response);
+        if (self.state !== REDIS_CLIENT_STATES.READY) {
+            return Promise.reject(libUtils.genError(
+                'Redis client is not ready to process',
+                STATUS_CODES.UNABLE_TO_PROCESS.status,
+                STATUS_CODES.UNABLE_TO_PROCESS.code
+            ));
+        }
+
+        let response = {};
+        let processingJob = LIST_PREFIX + jobId + LIST_SUFFIXES.INITIATED;
+        let processedJob = LIST_PREFIX + jobId + LIST_SUFFIXES.PROCESSED;
+        return new Promise((resolve, reject) => {
+            return self.client.lrange(processingJob, 0, 0)
+                .then((result) => {
+                    if (!result || !result.length) {
+                        return self.client.lrange(processedJob, -1, -1);
+                    }
+                    return Promise.resolve(result);
                 })
                 .then((result) => {
-                    return resolve(result);
+                    if (!result || !result.length) {
+                        response = {
+                            jobId,
+                            processed: {
+                                current: undefined,
+                                totalElements: undefined,
+                                percentageCompleted: 0,
+                                percentagePending: 100
+                            },
+                            status: STATUS_CODES.NO_JOB.status,
+                            message: STATUS_CODES.NO_JOB.message,
+                            code: STATUS_CODES.NO_JOB.code
+                        }
+                        return Promise.resolve();
+                    }
+
+                    result = result[0];
+                    result = JSON.parse(result);
+                    response = {
+                        jobId,
+                        processed: {
+                            current: result.currentIndex,
+                            totalElements: result.totalElements,
+                            percentageCompleted: Number(((result.currentIndex / result.totalElements) * 100).toFixed(2)),
+                            percentagePending: Number((100 - (result.currentIndex / result.totalElements * 100)).toFixed(2))
+                        },
+                        status: STATUS_CODES.SUCCESSFULLY_LISTED.status,
+                        message: STATUS_CODES.SUCCESSFULLY_LISTED.message,
+                        code: STATUS_CODES.SUCCESSFULLY_LISTED.code
+                    }
+                    return Promise.resolve();
+                })
+                .then(() => {
+                    return resolve(response);
                 })
                 .catch((error) => {
                     return reject(error);
@@ -301,25 +409,57 @@ class Redis {
 
     cancelJob(jobId) {
         let self = this;
-        let response;
-        let job = self.listPrefix + jobId + self.listSuffix;
+
+        if (self.state !== REDIS_CLIENT_STATES.READY) {
+            return Promise.reject(libUtils.genError(
+                'Redis client is not ready to process',
+                STATUS_CODES.UNABLE_TO_PROCESS.status,
+                STATUS_CODES.UNABLE_TO_PROCESS.code
+            ));
+        }
+
+        let response = {};
+        let cancelJob = LIST_PREFIX + jobId + LIST_SUFFIXES.INITIATED;
+        let peekJob = LIST_PREFIX + jobId + LIST_SUFFIXES.PROCESSED;
         return new Promise((resolve, reject) => {
-            return self.client.range(job)
+            return self.client.del(cancelJob)
                 .then((result) => {
+                    return self.client.lrange(peekJob, -1, -1);
+                })
+                .then((result) => {
+                    if (!result || !result.length) {
+                        response = {
+                            jobId,
+                            processed: {
+                                lastProcessed: 0,
+                                totalElements: undefined,
+                                percentageCompleted: 0,
+                                percentagePending: 100
+                            },
+                            status: STATUS_CODES.NO_JOB.status,
+                            message: STATUS_CODES.NO_JOB.message,
+                            code: STATUS_CODES.NO_JOB.code
+                        };
+                        return Promise.resolve();
+                    }
+
+                    result = result[0];
+                    result = JSON.parse(result);
                     response = {
-                        current: result.currentIndex,
-                        totalElements: result.totalElements,
-                        percentageCompleted: Number(((result.currentIndex / result.totalElements) * 100).toFixed(2)),
-                        percentagePending: 100 - Number(((result.currentIndex / result.totalElements) * 100).toFixed(2))
+                        jobId,
+                        processed: {
+                            lastProcessed: result.currentIndex,
+                            totalElements: result.totalElements,
+                            percentageCompleted: Number(((result.currentIndex / result.totalElements) * 100).toFixed(2)),
+                            percentagePending: Number(100 - Number(((result.currentIndex / result.totalElements) * 100).toFixed(2)))
+                        },
+                        status: STATUS_CODES.SUCCESSFULLY_CANCELLED.status,
+                        message: STATUS_CODES.SUCCESSFULLY_CANCELLED.message,
+                        code: STATUS_CODES.SUCCESSFULLY_CANCELLED.code
                     };
                     return Promise.resolve();
                 })
                 .then(() => {
-                    return self.client.del(job);
-                })
-                .then(() => {
-                    response.status = 'CANCELLED';
-                    response.message = 'Successfully cancelled job';
                     return resolve(response);
                 })
                 .catch((error) => {
@@ -330,3 +470,17 @@ class Redis {
 }
 
 module.exports = Redis;
+
+// const RedisC = new Redis({
+//     connectionType: 'NORMAL',
+//     connectOptions: {
+//         host: 'localhost',
+//         port: '6379',
+//     }
+// });
+// setTimeout(() => {
+//     console.log(RedisC.isReady());
+//     console.log(RedisC.peekJob('5bad21b9-42c4-473b-b901-92e6cc4bfd92'));
+//     console.log(RedisC.cancelJob('0f990f96-42d1-4e29-8355-4f42a60a3981'));
+//     console.log(RedisC.pop());
+// }, 2 * 1000);

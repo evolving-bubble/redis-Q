@@ -2,6 +2,19 @@
 
 module.exports = {
 
+    // Success Codes
+    SUCCESSFULLY_LISTED: {
+        message: 'Successfully listed job data',
+        status: 200,
+        code: 'SUCCESSFULLY_LISTED'
+    },
+
+    SUCCESSFULLY_CANCELLED: {
+        message: 'Successfully cancelled job data',
+        status: 200,
+        code: 'SUCCESSFULLY_CANCELLEd'
+    },
+
     // Client Error Codes
     PRECONDITION_FAILED: {
         message: 'Missing mandatory parameters',
@@ -9,6 +22,17 @@ module.exports = {
         code: 'PRECONDITION_FAILED'
     },
 
+    NO_JOB: {
+        message: 'No such job exists',
+        status: 422,
+        code: 'NO_JOB'
+    },
+
+    UNABLE_TO_PROCESS: {
+        message: 'Unable to process',
+        status: 422,
+        code: 'UNABLE_TO_PROCESS'
+    },
 
     // Server Error Codes
     INTERNAL_SERVER_ERROR: {
