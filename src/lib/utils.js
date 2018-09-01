@@ -3,7 +3,7 @@
 const Uuid = require('uuid');
 const Helpers = require('../helpers');
 
-const ERROR_CODES = Helpers.statusCodes;
+const STATUS_CODES = Helpers.statusCodes;
 
 class Utils {
     constructor() {
@@ -15,9 +15,9 @@ class Utils {
     }
 
     genError(message, status, code) {
-        let error = new Error(message || ERROR_CODES.INTERNAL_SERVER_ERROR.message);
-        error.status = status || ERROR_CODES.INTERNAL_SERVER_ERROR.status;
-        error.code = ERROR_CODES.INTERNAL_SERVER_ERROR.code;
+        let error = new Error(message || STATUS_CODES.INTERNAL_SERVER_ERROR.message);
+        error.status = status || STATUS_CODES.INTERNAL_SERVER_ERROR.status;
+        error.code = STATUS_CODES.INTERNAL_SERVER_ERROR.code;
         return error;
     }
 }

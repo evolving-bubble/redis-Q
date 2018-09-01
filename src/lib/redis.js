@@ -18,7 +18,7 @@ const FAMILY_TYPES = Constants.enums.FAMILY_TYPES;
 const CONNECTION_TYPES = Constants.enums.CONNECTION_TYPES;
 const REDIS_CLIENT_STATES = Constants.enums.REDIS_CLIENT_STATES;
 
-const DEFAULT_LIST = 'redisQ';
+const DEFAULT_LIST_NAME = 'redisQ';
 const LIST_PREFIX = 'redisQ_';
 const LIST_SUFFIXES = {
     INITIATED: '_initiated',
@@ -207,7 +207,7 @@ class Redis {
 
         self.client.on('ready', () => {
 
-            self.lists = [LIST_PREFIX + DEFAULT_LIST + self.listSuffix];
+            self.lists = [LIST_PREFIX + DEFAULT_LIST_NAME + self.listSuffix];
 
             self.client.keys('*')
                 .then((result) => {
@@ -337,7 +337,7 @@ class Redis {
             ));
         }
 
-        let result;
+        let response;
         return new Promise((resolve, reject) => {
             return self.client.blpop(self.lists, 0)
                 .then((element) => {
@@ -346,12 +346,13 @@ class Redis {
                         return Promise.resolve();
                     }
 
-                    result = JSON.parse(element[1]);
-                    let listName = LIST_PREFIX + result.jobId + LIST_SUFFIXES.PROCESSED;
+                    response = JSON.parse(element[1]);
+                    let listName = LIST_PREFIX + response.jobId + LIST_SUFFIXES.PROCESSED;
                     return self.client.rpush(listName, [element]);
                 })
                 .then(() => {
-                    return resolve(result)
+                    console.log(response);
+                    return resolve(response)
                 })
                 .catch((error) => {
                     return reject(error);
@@ -500,13 +501,18 @@ module.exports = Redis;
 //         port: '6379',
 //     }
 // });
-// setTimeout(() => {
-//     console.log(RedisC.isReady());
-//     RedisC.peekJob('197dc3f0-3f44-4bc4-8d11-ecf96842b455');
-//     RedisC.cancelJob('197dc3f0-3f44-4bc4-8d11-ecf96842b455');
 
-//     RedisC.push({
-//         elements: { 1: 1 }
-//     });
+// function start() {
+//     setTimeout(() => {
+//         console.log(RedisC.isReady());
+//         RedisC.peekJob('197dc3f0-3f44-4bc4-8d11-ecf96842b455');
+//         RedisC.cancelJob('197dc3f0-3f44-4bc4-8d11-ecf96842b455');
+//         RedisC.pop();
 
-// }, 3 * 1000);
+//         RedisC.push({
+//             elements: { 1: 1 }
+//         });
+//         start();
+//     }, 1 * 1000);
+// }
+// start();
