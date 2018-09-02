@@ -56,3 +56,15 @@ class Publisher {
 }
 
 module.exports = Publisher;
+
+// const publisher = new Publisher({
+//     redis: {
+//         connectionType: 'NORMAL',
+//         host: 'localhost',
+//         port: '6379',
+//     },
+//     servicePrefix: 'redisService'
+// });
+// setTimeout(() => {
+//     publisher.push([{ 1: 1, 2: 2 }]);
+// }, 1000);

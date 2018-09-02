@@ -38,7 +38,6 @@ class Utils {
         let keys1 = Object.keys(jsonData[0]);
         let keys2 = Object.keys(jsonData[jsonData.length - 1]);
         let keys = keys1.concat(keys2);
-        keys = keys.sort();
         keys = new Set(keys);
         keys = [...keys];
         let csvData = [keys.join(",")];

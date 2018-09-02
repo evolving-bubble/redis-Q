@@ -83,16 +83,15 @@ class Job {
 
 module.exports = Job;
 
-const job = new Job({
-    redis: {
-        connectionType: 'NORMAL',
-        host: 'localhost',
-        port: '6379',
-    },
-    servicePrefix: 'redisService'
-});
-
-setTimeout(() => {
-
-    job.generateCSVReport('6372bae0-14ed-4b0e-bd61-6775ff81f2e5');
-}, 1000);
+// const job = new Job({
+//     redis: {
+//         connectionType: 'NORMAL',
+//         host: 'localhost',
+//         port: '6379',
+//     },
+//     servicePrefix: 'redisService'
+// });
+// setTimeout(() => {
+//     job.generateCSVReport('6372bae0-14ed-4b0e-bd61-6775ff81f2e5');
+//     job.generateCSVReport('4ff188bd-5572-4455-bcac-f5c758e9f924');
+// }, 1000);

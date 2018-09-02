@@ -152,5 +152,4 @@ module.exports = Subscriber;
 //     },
 //     callbackTimeOut: 2 * 1000
 // });
-
 // subscriber.process();
