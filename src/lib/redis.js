@@ -186,9 +186,22 @@ class Redis {
     constructor(options) {
         let self = this;
         self.listSuffix = '_redisQ';
+        self.servicePrefix = options.servicePrefix;
         self.state = REDIS_CLIENT_STATES.UNINITIALIZED;
+        self.LIST_PREFIX = LIST_PREFIX;
+        self.LIST_SUFFIXES = LIST_SUFFIXES;
 
         self.connectionType = CONNECTION_TYPES[options.connectionType];
+
+        if (!self.servicePrefix) {
+            throw libUtils.genError(
+                'Service prefix not provided, used to differentiate different keys',
+                STATUS_CODES.PRECONDITION_FAILED.status,
+                STATUS_CODES.PRECONDITION_FAILED.code
+            );
+        }
+
+        self.servicePrefix = self.servicePrefix.split('_').join('-') + '_';
 
         if (!self.connectionType) {
             throw libUtils.genError(
@@ -207,7 +220,7 @@ class Redis {
 
         self.client.on('ready', () => {
 
-            self.lists = [LIST_PREFIX + DEFAULT_LIST_NAME + self.listSuffix];
+            self.lists = [self.servicePrefix + LIST_PREFIX + DEFAULT_LIST_NAME + self.listSuffix];
 
             self.client.keys('*')
                 .then((result) => {
@@ -217,7 +230,7 @@ class Redis {
 
                     result.forEach((key) => {
                         let keySplit = key.split('_');
-                        if (keySplit[0] === LIST_PREFIX.split('_')[0] && keySplit[2] === LIST_SUFFIXES.INITIATED.split('_')[1]) {
+                        if (keySplit[1] === LIST_PREFIX.split('_')[0] && keySplit[3] === LIST_SUFFIXES.INITIATED.split('_')[1]) {
                             self.lists.push(key);
                         }
                     });
@@ -292,6 +305,7 @@ class Redis {
 
         // Add JobId, Stringify the values
         elements = elements.map((element) => {
+            element.jobStatus = 'PENDING';
             element.jobId = jobId;
             element.currentIndex = currentIndex;
             element.totalElements = totalElements;
@@ -300,7 +314,7 @@ class Redis {
             return JSON.stringify(element)
         });
 
-        let listName = LIST_PREFIX + jobId + LIST_SUFFIXES.INITIATED;
+        let listName = self.servicePrefix + LIST_PREFIX + jobId + LIST_SUFFIXES.INITIATED;
         self.lists.push(listName);
         let response = {};
 
@@ -317,7 +331,6 @@ class Redis {
                     return Promise.resolve();
                 })
                 .then(() => {
-                    console.log(response);
                     return resolve(response);
                 })
                 .catch((error) => {
@@ -339,19 +352,17 @@ class Redis {
 
         let response;
         return new Promise((resolve, reject) => {
-            return self.client.blpop(self.lists, 0)
+            return self.client.blpop(self.lists, 1)
                 .then((element) => {
 
-                    if (!element && !element.length) {
+                    if (!element || !element.length) {
                         return Promise.resolve();
                     }
 
                     response = JSON.parse(element[1]);
-                    let listName = LIST_PREFIX + response.jobId + LIST_SUFFIXES.PROCESSED;
-                    return self.client.rpush(listName, [element]);
+                    return Promise.resolve(response);
                 })
                 .then(() => {
-                    console.log(response);
                     return resolve(response)
                 })
                 .catch((error) => {
@@ -376,8 +387,8 @@ class Redis {
         }
 
         let response = {};
-        let processingJob = LIST_PREFIX + jobId + LIST_SUFFIXES.INITIATED;
-        let processedJob = LIST_PREFIX + jobId + LIST_SUFFIXES.PROCESSED;
+        let processingJob = self.servicePrefix + LIST_PREFIX + jobId + LIST_SUFFIXES.INITIATED;
+        let processedJob = self.servicePrefix + LIST_PREFIX + jobId + LIST_SUFFIXES.PROCESSED;
         return new Promise((resolve, reject) => {
             return self.client.lrange(processingJob, 0, 0)
                 .then((result) => {
@@ -420,7 +431,6 @@ class Redis {
                     return Promise.resolve();
                 })
                 .then(() => {
-                    console.log(response);
                     return resolve(response);
                 })
                 .catch((error) => {
@@ -441,8 +451,8 @@ class Redis {
         }
 
         let response = {};
-        let cancelJob = LIST_PREFIX + jobId + LIST_SUFFIXES.INITIATED;
-        let peekJob = LIST_PREFIX + jobId + LIST_SUFFIXES.PROCESSED;
+        let cancelJob = self.servicePrefix + LIST_PREFIX + jobId + LIST_SUFFIXES.INITIATED;
+        let peekJob = self.servicePrefix + LIST_PREFIX + jobId + LIST_SUFFIXES.PROCESSED;
         return new Promise((resolve, reject) => {
             return self.client.del(cancelJob)
                 .then((result) => {
@@ -482,7 +492,54 @@ class Redis {
                     return Promise.resolve();
                 })
                 .then(() => {
-                    console.log(response);
+                    return resolve(response);
+                })
+                .catch((error) => {
+                    return reject(error);
+                });
+        });
+    }
+
+    rpush(listName, element) {
+        let self = this;
+        return self.client.rpush(listName, element);
+    }
+
+    generateJSONReport(jobId) {
+        let self = this;
+
+        if (self.state !== REDIS_CLIENT_STATES.READY) {
+            return Promise.reject(libUtils.genError(
+                'Redis client is not ready to process',
+                STATUS_CODES.UNABLE_TO_PROCESS.status,
+                STATUS_CODES.UNABLE_TO_PROCESS.code
+            ));
+        }
+
+        let response = [];
+        let processingJob = self.servicePrefix + LIST_PREFIX + jobId + LIST_SUFFIXES.INITIATED;
+        let processedJob = self.servicePrefix + LIST_PREFIX + jobId + LIST_SUFFIXES.PROCESSED;
+        return new Promise((resolve, reject) => {
+            return self.client.lrange(processingJob, 0, 0)
+                .then((result) => {
+                    if (result) {
+                        response = response.concat(result);
+                    }
+
+                    return self.client.lrange(processedJob, -1, -1);
+                })
+                .then((result) => {
+
+                    if (result) {
+                        response = response.concat(result);
+                    }
+
+                    response = response.map((element) => {
+                        return JSON.parse(element);
+                    });
+                    return Promise.resolve(response);
+                })
+                .then((response) => {
                     return resolve(response);
                 })
                 .catch((error) => {
@@ -504,7 +561,6 @@ module.exports = Redis;
 
 // function start() {
 //     setTimeout(() => {
-//         console.log(RedisC.isReady());
 //         RedisC.peekJob('197dc3f0-3f44-4bc4-8d11-ecf96842b455');
 //         RedisC.cancelJob('197dc3f0-3f44-4bc4-8d11-ecf96842b455');
 //         RedisC.pop();

@@ -141,7 +141,6 @@ class DBPublisher extends Publisher {
                     return Promise.resolve();
                 }
 
-                console.log('Pushing result into redis');
                 self.push(result);
                 return Promise.resolve();
             })
@@ -154,7 +153,7 @@ class DBPublisher extends Publisher {
 // // Test
 // const dBPublisher = new DBPublisher({
 //     jobName: 'test-DBPublisher',
-//     schedulerTime: '*/10 * * * * *', // Every 10 secs
+//     schedulerTime: '*/1 * * * * *', // Every 10 secs
 //     db: {
 //         host: 'localhost',
 //         port: '3306',
@@ -186,6 +185,7 @@ class DBPublisher extends Publisher {
 //         host: 'localhost',
 //         port: '6379',
 //         connectionType: 'NORMAL'
-//     }
+//     },
+//     servicePrefix: 'redisService'
 // });
 // dBPublisher.exec();

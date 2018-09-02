@@ -12,7 +12,8 @@ const STATUS_CODES = Helpers.statusCodes;
 const CONNECTION_TYPES = Constants.enums.CONNECTION_TYPES;
 
 
-class Publisher {
+class Job {
+
     constructor(options) {
         let self = this;
 
@@ -28,7 +29,7 @@ class Publisher {
             );
         }
 
-        // Create publisher options for redis client, 
+        // Create job options for redis client, 
         // nodes if cluster,
         // sentinels if sentinel, 
         // host,port if single redis
@@ -46,13 +47,52 @@ class Publisher {
         self.redis = new Libs.redis(redisPublisherOptions);
     }
 
-    push(elements) {
+    peek(jobId) {
         let self = this;
-        return self.redis.push({
-            elements
-        });
+        return self.redis.peekJob(jobId);
     }
 
+    cancel(jobId) {
+        let self = this;
+        return self.redis.cancelJob(jobId);
+    }
+
+    generateJSONReport(jobId) {
+        let self = this;
+        return self.redis.generateJSONReport(jobId);
+    }
+
+    generateCSVReport(jobId) {
+        let self = this;
+        return new Promise((resolve, reject) => {
+            return self.redis.generateJSONReport(jobId)
+                .then((result) => {
+                    let csvResult = libUtils.jsonToCsv(result);
+                    return Promise.resolve(csvResult);
+                })
+                .then((result) => {
+                    console.log(result);
+                    resolve(result);
+                })
+                .catch((error) => {
+                    reject(error);
+                });
+        });
+    }
 }
 
-module.exports = Publisher;
+module.exports = Job;
+
+const job = new Job({
+    redis: {
+        connectionType: 'NORMAL',
+        host: 'localhost',
+        port: '6379',
+    },
+    servicePrefix: 'redisService'
+});
+
+setTimeout(() => {
+
+    job.generateCSVReport('6372bae0-14ed-4b0e-bd61-6775ff81f2e5');
+}, 1000);
