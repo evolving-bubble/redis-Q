@@ -41,7 +41,7 @@ class Job {
                 nodes: options.redis.nodes,
                 sentinels: options.redis.sentinels
             },
-            servicePrefix: options.servicePrefix
+            jobPrefix: options.jobPrefix
         };
 
         self.redis = new Libs.redis(redisPublisherOptions);
@@ -49,17 +49,45 @@ class Job {
 
     peek(jobId) {
         let self = this;
-        return self.redis.peekJob(jobId);
+
+        return new Promise((resolve, reject) => {
+            return self.redis.peekJob(jobId)
+                .then((result) => {
+                    console.log(result);
+                    resolve(result);
+                })
+                .catch((error) => {
+                    reject(error);
+                });
+        });
     }
 
     cancel(jobId) {
         let self = this;
-        return self.redis.cancelJob(jobId);
+        return new Promise((resolve, reject) => {
+            return self.redis.cancelJob(jobId)
+                .then((result) => {
+                    console.log(result);
+                    resolve(result);
+                })
+                .catch((error) => {
+                    reject(error);
+                });
+        });
     }
 
     generateJSONReport(jobId) {
         let self = this;
-        return self.redis.generateJSONReport(jobId);
+        return new Promise((resolve, reject) => {
+            return self.redis.generateJSONReport(jobId)
+                .then((result) => {
+                    console.log(result);
+                    resolve(result);
+                })
+                .catch((error) => {
+                    reject(error);
+                });
+        });
     }
 
     generateCSVReport(jobId) {
@@ -67,6 +95,10 @@ class Job {
         return new Promise((resolve, reject) => {
             return self.redis.generateJSONReport(jobId)
                 .then((result) => {
+                    if (!result || !result.length) {
+                        return Promise.resolve([]);
+                    }
+
                     let csvResult = libUtils.jsonToCsv(result);
                     return Promise.resolve(csvResult);
                 })
@@ -83,15 +115,17 @@ class Job {
 
 module.exports = Job;
 
-// const job = new Job({
-//     redis: {
-//         connectionType: 'NORMAL',
-//         host: 'localhost',
-//         port: '6379',
-//     },
-//     servicePrefix: 'redisService'
-// });
-// setTimeout(() => {
-//     job.generateCSVReport('6372bae0-14ed-4b0e-bd61-6775ff81f2e5');
-//     job.generateCSVReport('4ff188bd-5572-4455-bcac-f5c758e9f924');
-// }, 1000);
+const job = new Job({
+    redis: {
+        connectionType: 'NORMAL',
+        host: 'localhost',
+        port: '6379',
+    },
+    jobPrefix: 'redisService1'
+});
+
+setTimeout(() => {
+    job.generateCSVReport('6372bae0-14ed-4b0e-bd61-6775ff81f2e5');
+    job.generateJSONReport('4ff188bd-5572-4455-bcac-f5c758e9f924');
+    job.peek('4ff188bd-5572-4455-bcac-f5c758e9f924');
+}, 1000);

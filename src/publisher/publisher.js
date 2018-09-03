@@ -40,7 +40,7 @@ class Publisher {
                 nodes: options.redis.nodes,
                 sentinels: options.redis.sentinels
             },
-            servicePrefix: options.servicePrefix
+            jobPrefix: options.jobPrefix
         };
 
         self.redis = new Libs.redis(redisPublisherOptions);

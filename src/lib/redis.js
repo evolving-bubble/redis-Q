@@ -186,14 +186,14 @@ class Redis {
     constructor(options) {
         let self = this;
         self.listSuffix = '_redisQ';
-        self.servicePrefix = options.servicePrefix;
+        self.jobPrefix = options.jobPrefix;
         self.state = REDIS_CLIENT_STATES.UNINITIALIZED;
         self.LIST_PREFIX = LIST_PREFIX;
         self.LIST_SUFFIXES = LIST_SUFFIXES;
 
         self.connectionType = CONNECTION_TYPES[options.connectionType];
 
-        if (!self.servicePrefix) {
+        if (!self.jobPrefix) {
             throw libUtils.genError(
                 'Service prefix not provided, used to differentiate different keys',
                 STATUS_CODES.PRECONDITION_FAILED.status,
@@ -201,7 +201,7 @@ class Redis {
             );
         }
 
-        self.servicePrefix = self.servicePrefix.split('_').join('-') + '_';
+        self.jobPrefix = self.jobPrefix.split('_').join('-') + '_';
 
         if (!self.connectionType) {
             throw libUtils.genError(
@@ -220,7 +220,7 @@ class Redis {
 
         self.client.on('ready', () => {
 
-            self.lists = [self.servicePrefix + LIST_PREFIX + DEFAULT_LIST_NAME + self.listSuffix];
+            self.lists = [self.jobPrefix + LIST_PREFIX + DEFAULT_LIST_NAME + self.listSuffix];
 
             self.client.keys('*')
                 .then((result) => {
@@ -230,7 +230,11 @@ class Redis {
 
                     result.forEach((key) => {
                         let keySplit = key.split('_');
-                        if (keySplit[1] === LIST_PREFIX.split('_')[0] && keySplit[3] === LIST_SUFFIXES.INITIATED.split('_')[1]) {
+                        if (
+                            keySplit[0] === self.jobPrefix &&
+                            keySplit[1] === LIST_PREFIX.split('_')[0] &&
+                            keySplit[3] === LIST_SUFFIXES.INITIATED.split('_')[1]
+                        ) {
                             self.lists.push(key);
                         }
                     });
@@ -314,7 +318,7 @@ class Redis {
             return JSON.stringify(element)
         });
 
-        let listName = self.servicePrefix + LIST_PREFIX + jobId + LIST_SUFFIXES.INITIATED;
+        let listName = self.jobPrefix + LIST_PREFIX + jobId + LIST_SUFFIXES.INITIATED;
         self.lists.push(listName);
         let response = {};
 
@@ -387,8 +391,8 @@ class Redis {
         }
 
         let response = {};
-        let processingJob = self.servicePrefix + LIST_PREFIX + jobId + LIST_SUFFIXES.INITIATED;
-        let processedJob = self.servicePrefix + LIST_PREFIX + jobId + LIST_SUFFIXES.PROCESSED;
+        let processingJob = self.jobPrefix + LIST_PREFIX + jobId + LIST_SUFFIXES.INITIATED;
+        let processedJob = self.jobPrefix + LIST_PREFIX + jobId + LIST_SUFFIXES.PROCESSED;
         return new Promise((resolve, reject) => {
             return self.client.lrange(processingJob, 0, 0)
                 .then((result) => {
@@ -451,8 +455,8 @@ class Redis {
         }
 
         let response = {};
-        let cancelJob = self.servicePrefix + LIST_PREFIX + jobId + LIST_SUFFIXES.INITIATED;
-        let peekJob = self.servicePrefix + LIST_PREFIX + jobId + LIST_SUFFIXES.PROCESSED;
+        let cancelJob = self.jobPrefix + LIST_PREFIX + jobId + LIST_SUFFIXES.INITIATED;
+        let peekJob = self.jobPrefix + LIST_PREFIX + jobId + LIST_SUFFIXES.PROCESSED;
         return new Promise((resolve, reject) => {
             return self.client.del(cancelJob)
                 .then((result) => {
@@ -517,8 +521,8 @@ class Redis {
         }
 
         let response = [];
-        let processingJob = self.servicePrefix + LIST_PREFIX + jobId + LIST_SUFFIXES.INITIATED;
-        let processedJob = self.servicePrefix + LIST_PREFIX + jobId + LIST_SUFFIXES.PROCESSED;
+        let processingJob = self.jobPrefix + LIST_PREFIX + jobId + LIST_SUFFIXES.INITIATED;
+        let processedJob = self.jobPrefix + LIST_PREFIX + jobId + LIST_SUFFIXES.PROCESSED;
         return new Promise((resolve, reject) => {
             return self.client.lrange(processingJob, 0, 0)
                 .then((result) => {
@@ -550,25 +554,3 @@ class Redis {
 }
 
 module.exports = Redis;
-
-// const RedisC = new Redis({
-//     connectionType: 'NORMAL',
-//     connectOptions: {
-//         host: 'localhost',
-//         port: '6379',
-//     }
-// });
-
-// function start() {
-//     setTimeout(() => {
-//         RedisC.peekJob('197dc3f0-3f44-4bc4-8d11-ecf96842b455');
-//         RedisC.cancelJob('197dc3f0-3f44-4bc4-8d11-ecf96842b455');
-//         RedisC.pop();
-
-//         RedisC.push({
-//             elements: { 1: 1 }
-//         });
-//         start();
-//     }, 1 * 1000);
-// }
-// start();

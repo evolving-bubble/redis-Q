@@ -34,7 +34,7 @@ const publisher = new JobManager.Publisher({
         host: 'localhost',
         port: '6379',
     },
-    servicePrefix: 'JobManager'
+    jobPrefix: 'JobManager'
 });
 
 if(publisher.isReady()){
@@ -80,7 +80,7 @@ const dBPublisher = new JobManager.DbPublisher({
         port: '6379',
         connectionType: 'NORMAL'
     },
-    servicePrefix: 'JobManager'
+    jobPrefix: 'JobManager'
 });
 
 dBPublisher.exec();
@@ -98,7 +98,7 @@ const subscriber = new JobManager.Subscriber({
         host: 'localhost',
         port: '6379',
     },
-    servicePrefix: 'JobManager',
+    jobPrefix: 'JobManager',
     callback: (message) => {
         return new Promise((resolve, reject) => {
             Promise.resolve()
@@ -114,6 +114,28 @@ const subscriber = new JobManager.Subscriber({
     callbackTimeOut: 2 * 1000
 });
 subscriber.process();
+```
+
+
+ - Create a job
+
+ Will create a job object to track job progress and to generate reports
+
+```bash
+const job = new Job({
+    redis: {
+        connectionType: 'NORMAL',
+        host: 'localhost',
+        port: '6379',
+    },
+    jobPrefix: 'JobManager'
+});
+
+setTimeout(() => {
+    job.generateCSVReport('6372bae0-14ed-4b0e-bd61-6775ff81f2e5');
+    job.generateJSONReport('4ff188bd-5572-4455-bcac-f5c758e9f924');
+    job.peek('4ff188bd-5572-4455-bcac-f5c758e9f924');
+}, 1000);
 ```
 
 ## How to contribute

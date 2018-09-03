@@ -60,7 +60,7 @@ class Subscriber {
                 nodes: options.redis.nodes,
                 sentinels: options.redis.sentinels
             },
-            servicePrefix: options.servicePrefix
+            jobPrefix: options.jobPrefix
         };
 
         self.redis = new Libs.redis(redisPublisherOptions);
@@ -98,7 +98,7 @@ class Subscriber {
                         });
                     }
 
-                    let listName = self.redis.servicePrefix + self.redis.LIST_PREFIX + elementToProcess.jobId + self.redis.LIST_SUFFIXES.PROCESSED;
+                    let listName = self.redis.jobPrefix + self.redis.LIST_PREFIX + elementToProcess.jobId + self.redis.LIST_SUFFIXES.PROCESSED;
                     return self.redis.rpush(listName, JSON.stringify(elementToProcess));
                 })
                 .then((result) => {
@@ -110,7 +110,7 @@ class Subscriber {
                     return Promise.resolve()
                         .then(() => {
                             elementToProcess.jobStatus = 'FAILURE';
-                            let listName = self.redis.servicePrefix + self.redis.LIST_PREFIX + elementToProcess.jobId + self.redis.LIST_SUFFIXES.PROCESSED;
+                            let listName = self.redis.jobPrefix + self.redis.LIST_PREFIX + elementToProcess.jobId + self.redis.LIST_SUFFIXES.PROCESSED;
                             return self.redis.rpush(listName, JSON.stringify(elementToProcess));
                         })
                         .then(() => {
