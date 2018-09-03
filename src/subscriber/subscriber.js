@@ -131,25 +131,3 @@ class Subscriber {
 }
 
 module.exports = Subscriber;
-
-// const subscriber = new Subscriber({
-//     redis: {
-//         connectionType: 'NORMAL',
-//         host: 'localhost',
-//         port: '6379',
-//     },
-//     servicePrefix: 'redisService',
-//     callback: (message) => {
-//         return new Promise((resolve, reject) => {
-//             Promise.resolve()
-//                 .then(() => {
-//                     return resolve();
-//                 })
-//                 .catch((error) => {
-//                     return reject(error);
-//                 });
-//         })
-//     },
-//     callbackTimeOut: 2 * 1000
-// });
-// subscriber.process();
