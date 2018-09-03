@@ -1,5 +1,5 @@
 {
-  "name": "redis-q",
+  "name": "@evolving-bubble/redis-q",
   "version": "1.0.0",
   "description": "Redis Queue for jobs",
   "main": "index.js",
@@ -32,5 +32,6 @@
     "sequelize": "^4.38.0",
     "shelljs": "^0.8.2",
     "uuid": "^3.3.2"
-  }
+  },
+  "devDependencies": {}
 }

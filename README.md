@@ -15,7 +15,7 @@ Redis-Q Job manager will work on all systems which can run node.
 
 ## Install
 ```bash
-npm install @evolving-bubble/redis-Q
+npm install @evolving-bubble/redis-q
 ```
 
 ## Usage
